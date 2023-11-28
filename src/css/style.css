@@ -12,6 +12,10 @@ h6 {
     margin: 0;
 }
 
+a {
+    text-decoration: none;
+}
+
 img {
     display: block;
     max-width: 100%;
@@ -49,7 +53,7 @@ button {
 }
 
 .gallery {
-    padding-top: 48px; 
+    padding-top: 20px; 
     display: flex;
     flex-wrap: wrap;
     gap: 48px 24px;
@@ -67,6 +71,7 @@ button {
 }
 
 .photo-card .info-item {
+    color: black;
     text-align: center;
 }
 
@@ -76,4 +81,13 @@ button {
 
 .thumb img {
     object-fit: cover;
+}
+
+.load-more {
+    display: block;
+    margin: 20px auto;
+}
+
+.hidden {
+    display: none;
 }

@@ -6,10 +6,11 @@ import SimpleLightbox from "simplelightbox";
 import "simplelightbox/dist/simple-lightbox.min.css";
 
 iziToast.settings({
-  timeout: 3000,
+  timeout: 2000,
   position: 'topRight',
   transitionIn: "fadeInRight",
-  transitionOut: "fadeOutLeft",
+    transitionOut: "fadeOutLeft",
+    maxWidth: 350,
 });
 
 var lightbox = new SimpleLightbox(".photo-card a", {
@@ -18,17 +19,28 @@ var lightbox = new SimpleLightbox(".photo-card a", {
 const elements = {
     searchForm: document.querySelector(".search-form"),
     gallery: document.querySelector(".gallery"),
+    btnLoadMore: document.querySelector(".load-more"),
 }
 
+let cardHeight;
+const perPage = 40;
+let page = 1;
+let tag;
+
 elements.searchForm.addEventListener("submit", handlerSearchPhoto);
+elements.btnLoadMore.addEventListener("click", handlerLoadMore);
 
 function handlerSearchPhoto(evt) {
     evt.preventDefault();
    
     if (elements.searchForm[0].value) {
-        const tag = elements.searchForm[0].value.trim().toLowerCase();
+        tag = elements.searchForm[0].value.trim().toLowerCase();
+        page = 1;
+
         elements.searchForm.reset();
-        servicePhoto(tag)
+
+        console.log(page);
+        servicePhoto(tag, page, perPage)
             .then((data) => { 
                 if (!data.hits.length) {
                     iziToast.error({
@@ -37,11 +49,47 @@ function handlerSearchPhoto(evt) {
                     return;
                 }
                 console.log(data);
+                iziToast.success({
+                    message: `Hooray! We found ${data.totalHits} images.`,
+                    });
                 elements.gallery.innerHTML = createMarkupGallary(data.hits);
                 lightbox.refresh();
+                cardHeight = elements.gallery.firstElementChild.getBoundingClientRect();
+
+                scrollBy({
+                    top: cardHeight.height * 2,
+                    behavior: "smooth",
+                });
              })
             .catch((err) => console.log(err));
     }
+    else {
+         iziToast.warning({
+                        message: "Fill in the search field!",
+                    });
+    }
+}
+
+function handlerLoadMore() {
+    page += 1;
+    servicePhoto(tag, page, perPage)
+        .then((data) => {
+            elements.gallery.insertAdjacentHTML("beforeend", createMarkupGallary(data.hits));
+            lightbox.refresh();
+            
+                scrollBy({
+                    top: cardHeight.height * 2,
+                    behavior: "smooth",
+                });
+            
+            if (page >= data.totalHits / perPage) {
+                elements.btnLoadMore.classList.add("hidden");
+                iziToast.error({
+                        message: "We're sorry, but you've reached the end of search results.",
+                    });
+            }
+        })
+        .catch((err)=>console.log(err));
 }
 
 
@@ -50,7 +98,7 @@ function createMarkupGallary(arr) {
     <div class="photo-card">
         <a class="gallery-link" href="${largeImageURL}">
             <div class="thumb">
-                <img src="${webformatURL}" alt="${tags}" width="360" loading="lazy" />
+                <img src="${webformatURL}" alt="${tags}" loading="lazy" width="360" />
             </div>
                 <div class="info">
                     <p class="info-item">
@@ -71,8 +119,7 @@ function createMarkupGallary(arr) {
     `).join("");
 }
 
-async function servicePhoto(q) {
-
+async function servicePhoto(q, page = 1, per_page) {
     const options = {
         params: {
             key:"40906325-3c4aeac244a0485d830cf7c70",
@@ -81,10 +128,16 @@ async function servicePhoto(q) {
             orientation: "horizontal",
             safesearch: true,
             per_page: 40,
+            page,
         }
     }
     
-    const response = await axios.get("https://pixabay.com/api/", options);
+    const {data} = await axios.get("https://pixabay.com/api/", options);
 
-    return response.data;
+    if (page <= data.totalHits / per_page) {
+        elements.btnLoadMore.classList.remove("hidden");
+    }
+
+    return data;
 }
+
