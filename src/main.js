@@ -30,66 +30,64 @@ let tag;
 elements.searchForm.addEventListener("submit", handlerSearchPhoto);
 elements.btnLoadMore.addEventListener("click", handlerLoadMore);
 
-function handlerSearchPhoto(evt) {
+async function handlerSearchPhoto(evt) {
     evt.preventDefault();
-   
-    if (elements.searchForm[0].value) {
-        tag = elements.searchForm[0].value.trim().toLowerCase();
+    tag = elements.searchForm[0].value.trim().toLowerCase();
+    elements.btnLoadMore.classList.add("hidden");
+    if (tag) {
         page = 1;
 
         elements.searchForm.reset();
 
-        console.log(page);
-        servicePhoto(tag, page, perPage)
-            .then((data) => { 
-                if (!data.hits.length) {
+        try {
+            const data = await servicePhoto(tag, page, perPage)
+            if (!data.hits.length) {
                     iziToast.error({
                         message: "Sorry, there are no images matching your search query. Please try again.",
                     });
+                    elements.gallery.innerHTML = "<div></div>";
                     return;
                 }
-                console.log(data);
+
                 iziToast.success({
                     message: `Hooray! We found ${data.totalHits} images.`,
                     });
                 elements.gallery.innerHTML = createMarkupGallary(data.hits);
                 lightbox.refresh();
-                cardHeight = elements.gallery.firstElementChild.getBoundingClientRect();
-
-                scrollBy({
-                    top: cardHeight.height * 2,
-                    behavior: "smooth",
-                });
-             })
-            .catch((err) => console.log(err));
+        } catch {
+            (err) => console.log(err)
+        }
     }
     else {
          iziToast.warning({
                         message: "Fill in the search field!",
-                    });
+         });
+        elements.gallery.innerHTML = "<div></div>";
     }
 }
 
-function handlerLoadMore() {
+async function handlerLoadMore() {
     page += 1;
-    servicePhoto(tag, page, perPage)
-        .then((data) => {
-            elements.gallery.insertAdjacentHTML("beforeend", createMarkupGallary(data.hits));
+
+    try {
+        const data = await servicePhoto(tag, page, perPage);
+        elements.gallery.insertAdjacentHTML("beforeend", createMarkupGallary(data.hits));
             lightbox.refresh();
-            
+                cardHeight = elements.gallery.firstElementChild.getBoundingClientRect();
                 scrollBy({
-                    top: cardHeight.height * 2,
+                    top: cardHeight.height * 3,
                     behavior: "smooth",
                 });
             
             if (page >= data.totalHits / perPage) {
                 elements.btnLoadMore.classList.add("hidden");
-                iziToast.error({
-                        message: "We're sorry, but you've reached the end of search results.",
-                    });
-            }
-        })
-        .catch((err)=>console.log(err));
+                // iziToast.error({
+                //         message: "We're sorry, but you've reached the end of search results.",
+                //     });
+        }
+    } catch {
+        (err)=>console.log(err)
+    }
 }
 
 
@@ -132,10 +130,14 @@ async function servicePhoto(q, page = 1, per_page) {
         }
     }
     
-    const {data} = await axios.get("https://pixabay.com/api/", options);
-
+    const { data } = await axios.get("https://pixabay.com/api/", options);
+    
     if (page <= data.totalHits / per_page) {
         elements.btnLoadMore.classList.remove("hidden");
+    } else if(data.totalHits) {
+        iziToast.error({
+                        message: "We're sorry, but you've reached the end of search results.",
+                    });
     }
 
     return data;
